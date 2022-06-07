@@ -1,0 +1,15 @@
+chap01. Sounds and signals.ipynb
+chap01.1. Wave and Spectrum.ipynb
+chap01. preview.ipynb
+chap02. Harmonics.ipynb
+chap03. Non-periodic signals.ipynb
+chap04. Noise.ipynb
+chap05. Autocorrelation.ipynb
+chap06. Discrete Cosine Transform.ipynb
+chap06. starter.ipynb
+chap07. Discrete Fourier Transform We’ve.ipynb
+chap08. Filtering and Convolution.ipynb
+chap09. Differentiation and Integration.ipynb
+chap10. LTI systems.ipynb
+chap10. preview.ipynb
+chap11. Modulation and sampling.ipynb

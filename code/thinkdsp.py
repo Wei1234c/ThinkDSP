@@ -2,12 +2,9 @@
 by Allen B. Downey, available from greenteapress.com
 
 Copyright 2013 Allen B. Downey
-License: GNU GPLv3 http://www.gnu.org/licenses/gpl.html
+License: MIT License (https://opensource.org/licenses/MIT)
 """
 
-from __future__ import print_function, division
-
-import array
 import copy
 import math
 
@@ -16,21 +13,20 @@ import random
 import scipy
 import scipy.stats
 import scipy.fftpack
-import struct
 import subprocess
-import thinkplot
 import warnings
 
-from fractions import gcd
 from wave import open as open_wave
+from scipy.io import wavfile
 
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
 
 try:
     from IPython.display import Audio
 except:
-    warnings.warn("Can't import Audio from IPython.display; "
-                  "Wave.make_audio() will not work.")
+    warnings.warn(
+        "Can't import Audio from IPython.display; " "Wave.make_audio() will not work."
+    )
 
 PI2 = math.pi * 2
 
@@ -51,7 +47,7 @@ class UnimplementedMethodException(Exception):
 class WavFileWriter:
     """Writes wav files."""
 
-    def __init__(self, filename='sound.wav', framerate=11025):
+    def __init__(self, filename="sound.wav", framerate=11025):
         """Opens the file and sets parameters.
 
         filename: string
@@ -62,16 +58,16 @@ class WavFileWriter:
         self.nchannels = 1
         self.sampwidth = 2
         self.bits = self.sampwidth * 8
-        self.bound = 2**(self.bits-1) - 1
+        self.bound = 2 ** (self.bits - 1) - 1
 
-        self.fmt = 'h'
+        self.fmt = "h"
         self.dtype = np.int16
 
-        self.fp = open_wave(self.filename, 'w')
+        self.fp = open_wave(self.filename, "w")
         self.fp.setnchannels(self.nchannels)
         self.fp.setsampwidth(self.sampwidth)
         self.fp.setframerate(self.framerate)
-    
+
     def write(self, wave):
         """Writes a wave.
 
@@ -91,28 +87,28 @@ class WavFileWriter:
         self.fp.close()
 
 
-def read_wave(filename='sound.wav'):
+def read_wave(filename="sound.wav"):
     """Reads a wave file.
 
     filename: string
 
     returns: Wave
     """
-    fp = open_wave(filename, 'r')
+    fp = open_wave(filename, "r")
 
     nchannels = fp.getnchannels()
     nframes = fp.getnframes()
     sampwidth = fp.getsampwidth()
     framerate = fp.getframerate()
-    
+
     z_str = fp.readframes(nframes)
-    
+
     fp.close()
 
-    dtype_map = {1:np.int8, 2:np.int16, 3:'special', 4:np.int32}
+    dtype_map = {1: np.int8, 2: np.int16, 3: "special", 4: np.int32}
     if sampwidth not in dtype_map:
-        raise ValueError('sampwidth %d unknown' % sampwidth)
-    
+        raise ValueError("sampwidth %d unknown" % sampwidth)
+
     if sampwidth == 3:
         xs = np.fromstring(z_str, dtype=np.int8).astype(np.int32)
         ys = (xs[2::3] * 256 + xs[1::3]) * 256 + xs[0::3]
@@ -123,19 +119,40 @@ def read_wave(filename='sound.wav'):
     if nchannels == 2:
         ys = ys[::2]
 
-    #ts = np.arange(len(ys)) / framerate
+    # ts = np.arange(len(ys)) / framerate
     wave = Wave(ys, framerate=framerate)
     wave.normalize()
     return wave
 
 
-def play_wave(filename='sound.wav', player='aplay'):
+def read_wave_with_scipy(filename):
+    """Reads a wave file.
+
+    filename: string
+
+    returns: Wave
+    """
+    # TODO: Check back later and see if this works on 24-bit data,
+    # and runs without throwing warnings.
+    framerate, ys = wavfile.read(filename)
+
+    # if it's in stereo, just pull out the first channel
+    if ys.ndim == 2:
+        ys = ys[:, 0]
+
+    # ts = np.arange(len(ys)) / framerate
+    wave = Wave(ys, framerate=framerate)
+    wave.normalize()
+    return wave
+
+
+def play_wave(filename="sound.wav", player="aplay"):
     """Plays a wave file.
 
     filename: string
     player: string name of executable that plays wav files
     """
-    cmd = '%s %s' % (player, filename)
+    cmd = "%s %s" % (player, filename)
     popen = subprocess.Popen(cmd, shell=True)
     popen.communicate()
 
@@ -145,7 +162,7 @@ def find_index(x, xs):
     n = len(xs)
     start = xs[0]
     end = xs[-1]
-    i = round((n-1) * (x - start) / (end - start))
+    i = round((n - 1) * (x - start) / (end - start))
     return int(i)
 
 
@@ -205,7 +222,7 @@ class _SpectrumParent:
         """The ratio of two spectrums.
 
         denom: Spectrum
-        thresh: values smaller than this are replaced 
+        thresh: values smaller than this are replaced
         val: with this value
 
         returns: new Wave
@@ -251,10 +268,10 @@ class _SpectrumParent:
         """
         if self.full:
             fs, amps = self.render_full(high)
-            thinkplot.plot(fs, amps, **options)
+            plt.plot(fs, amps, **options)
         else:
             i = None if high is None else find_index(high, self.fs)
-            thinkplot.plot(self.fs[:i], self.amps[:i], **options)
+            plt.plot(self.fs[:i], self.amps[:i], **options)
 
     def plot_power(self, high=None, **options):
         """Plots power vs frequency.
@@ -263,10 +280,10 @@ class _SpectrumParent:
         """
         if self.full:
             fs, amps = self.render_full(high)
-            thinkplot.plot(fs, amps**2, **options)
+            plt.plot(fs, amps ** 2, **options)
         else:
             i = None if high is None else find_index(high, self.fs)
-            thinkplot.plot(self.fs[:i], self.power[:i], **options)
+            plt.plot(self.fs[:i], self.power[:i], **options)
 
     def estimate_slope(self):
         """Runs linear regression on log power vs log frequency.
@@ -275,7 +292,7 @@ class _SpectrumParent:
         """
         x = np.log(self.fs[1:])
         y = np.log(self.power[1:])
-        t = scipy.stats.linregress(x,y)
+        t = scipy.stats.linregress(x, y)
         return t
 
     def peaks(self):
@@ -310,7 +327,7 @@ class Spectrum(_SpectrumParent):
         return Spectrum(hs, self.fs, self.framerate, self.full)
 
     __radd__ = __add__
-        
+
     def __mul__(self, other):
         """Multiplies two spectrums elementwise.
 
@@ -321,24 +338,24 @@ class Spectrum(_SpectrumParent):
         assert all(self.fs == other.fs)
         hs = self.hs * other.hs
         return Spectrum(hs, self.fs, self.framerate, self.full)
-        
+
     def convolve(self, other):
         """Convolves two Spectrums.
 
         other: Spectrum
-        
+
         returns: Spectrum
         """
         assert all(self.fs == other.fs)
         if self.full:
             hs1 = np.fft.fftshift(self.hs)
             hs2 = np.fft.fftshift(other.hs)
-            hs = np.convolve(hs1, hs2, mode='same')
+            hs = np.convolve(hs1, hs2, mode="same")
             hs = np.fft.ifftshift(hs)
         else:
             # not sure this branch would mean very much
-            hs = np.convolve(self.hs, other.hs, mode='same')
-            
+            hs = np.convolve(self.hs, other.hs, mode="same")
+
         return Spectrum(hs, self.fs, self.framerate, self.full)
 
     @property
@@ -396,7 +413,7 @@ class Spectrum(_SpectrumParent):
 
         beta: exponent of the pink noise
         """
-        denom = self.fs ** (beta/2.0)
+        denom = self.fs ** (beta / 2.0)
         denom[0] = 1
         self.hs /= denom
 
@@ -415,7 +432,9 @@ class Spectrum(_SpectrumParent):
         returns: new Spectrum
         """
         new = self.copy()
-        new.hs /= PI2 * 1j * new.fs
+        zero = (new.fs == 0)
+        new.hs[~zero] /= PI2 * 1j * new.fs[~zero]
+        new.hs[zero] = np.inf
         return new
 
     def make_integrated_spectrum(self):
@@ -435,7 +454,7 @@ class Spectrum(_SpectrumParent):
         else:
             ys = np.fft.irfft(self.hs)
 
-        #NOTE: whatever the start time was, we lose it when
+        # NOTE: whatever the start time was, we lose it when
         # we transform back; we could fix that by saving start
         # time in the Spectrum
         # ts = self.start + np.arange(len(ys)) / self.framerate
@@ -444,7 +463,7 @@ class Spectrum(_SpectrumParent):
 
 class IntegratedSpectrum:
     """Represents the integral of a spectrum."""
-    
+
     def __init__(self, cs, fs):
         """Initializes an integrated spectrum:
 
@@ -457,7 +476,7 @@ class IntegratedSpectrum:
     def plot_power(self, low=0, high=None, expo=False, **options):
         """Plots the integrated spectrum.
 
-        low: int index to start at 
+        low: int index to start at
         high: int index to end at
         """
         cs = self.cs[low:high]
@@ -466,18 +485,18 @@ class IntegratedSpectrum:
         if expo:
             cs = np.exp(cs)
 
-        thinkplot.plot(fs, cs, **options)
+        plt.plot(fs, cs, **options)
 
     def estimate_slope(self, low=1, high=-12000):
         """Runs linear regression on log cumulative power vs log frequency.
 
         returns: slope, inter, r2, p, stderr
         """
-        #print self.fs[low:high]
-        #print self.cs[low:high]
+        # print self.fs[low:high]
+        # print self.cs[low:high]
         x = np.log(self.fs[low:high])
         y = np.log(self.cs[low:high])
-        t = scipy.stats.linregress(x,y)
+        t = scipy.stats.linregress(x, y)
         return t
 
 
@@ -507,7 +526,7 @@ class Dct(_SpectrumParent):
         return Dct(hs, self.fs, self.framerate)
 
     __radd__ = __add__
-        
+
     def make_wave(self):
         """Transforms to the time domain.
 
@@ -515,9 +534,9 @@ class Dct(_SpectrumParent):
         """
         N = len(self.hs)
         ys = scipy.fftpack.idct(self.hs, type=2) / 2 / N
-        #NOTE: whatever the start time was, we lose it when
+        # NOTE: whatever the start time was, we lose it when
         # we transform back
-        #ts = self.start + np.arange(len(ys)) / self.framerate
+        # ts = self.start + np.arange(len(ys)) / self.framerate
         return Wave(ys, framerate=self.framerate)
 
 
@@ -584,7 +603,29 @@ class Spectrogram:
             spectrum = self.spec_map[t]
             array[:, j] = spectrum.amps[:i]
 
-        thinkplot.pcolor(ts, fs, array, **options)
+        underride(options, cmap='inferno_r', shading='auto')
+        plt.pcolormesh(ts, fs, array, **options)
+
+    def get_data(self, high=None, **options):
+        """Returns spectogram as 2D numpy array
+
+        high: highest frequency component to return
+        """
+        fs = self.frequencies()
+        i = None if high is None else find_index(high, fs)
+        fs = fs[:i]
+        ts = self.times()
+
+        # make the array
+        size = len(fs), len(ts)
+        array = np.zeros(size, dtype=np.float)
+
+        # copy amplitude from each spectrum into a column of the array
+        for j, t in enumerate(ts):
+            spectrum = self.spec_map[t]
+            array[:, j] = spectrum.amps[:i]
+
+        return array
 
     def make_wave(self):
         """Inverts the spectrogram and returns a Wave.
@@ -595,7 +636,7 @@ class Spectrogram:
         for t, spectrum in sorted(self.spec_map.items()):
             wave = spectrum.make_wave()
             n = len(wave)
-            
+
             window = 1 / np.hamming(n)
             wave.window(window)
 
@@ -608,7 +649,7 @@ class Spectrogram:
         low = min(starts)
         high = max(ends)
 
-        ys = np.zeros(high-low, np.float)
+        ys = np.zeros(high - low, np.float)
         for start, end, wave in res:
             ys[start:end] = wave.ys
 
@@ -620,6 +661,7 @@ class Wave:
     """Represents a discrete-time waveform.
 
     """
+
     def __init__(self, ys, ts=None, framerate=None):
         """Initializes the wave.
 
@@ -687,8 +729,9 @@ class Wave:
             diff = ts[i] - wave.start
             dt = 1 / wave.framerate
             if (diff / dt) > 0.1:
-                warnings.warn("Can't add these waveforms; their "
-                              "time arrays don't line up.")
+                warnings.warn(
+                    "Can't add these waveforms; their " "time arrays don't line up."
+                )
 
             j = i + len(wave)
             ys[i:j] += wave.ys
@@ -699,16 +742,16 @@ class Wave:
         return Wave(ys, ts, self.framerate)
 
     __radd__ = __add__
-        
+
     def __or__(self, other):
         """Concatenates two waves.
 
         other: Wave
-        
+
         returns: new Wave
         """
         if self.framerate != other.framerate:
-            raise ValueError('Wave.__or__: framerates do not agree')
+            raise ValueError("Wave.__or__: framerates do not agree")
 
         ys = np.concatenate((self.ys, other.ys))
         # ts = np.arange(len(ys)) / self.framerate
@@ -730,7 +773,7 @@ class Wave:
 
         ys = self.ys * other.ys
         return Wave(ys, self.ts, self.framerate)
-        
+
     def max_diff(self, other):
         """Computes the maximum absolute difference between waves.
 
@@ -751,7 +794,7 @@ class Wave:
         has the timestamps of self.
 
         other: Wave or NumPy array
-        
+
         returns: Wave
         """
         if isinstance(other, Wave):
@@ -760,8 +803,8 @@ class Wave:
         else:
             window = other
 
-        ys = np.convolve(self.ys, window, mode='full')
-        #ts = np.arange(len(ys)) / self.framerate
+        ys = np.convolve(self.ys, window, mode="full")
+        # ts = np.arange(len(ys)) / self.framerate
         return Wave(ys, framerate=self.framerate)
 
     def diff(self):
@@ -834,7 +877,7 @@ class Wave:
         """Rolls this wave by the given number of locations.
         """
         self.ys = np.roll(self.ys, roll)
-        
+
     def truncate(self, n):
         """Trims this wave to the given length.
 
@@ -868,7 +911,7 @@ class Wave:
         n = len(self)
         start = self.start
         end = self.end
-        i = round((n-1) * (t - start) / (end - start))
+        i = round((n - 1) * (t - start) / (end - start))
         return int(i)
 
     def segment(self, start=None, duration=None):
@@ -900,6 +943,9 @@ class Wave:
 
     def make_spectrum(self, full=False):
         """Computes the spectrum using FFT.
+
+        full: boolean, whethere to compute a full FFT
+              (as opposed to a real FFT)
 
         returns: Spectrum
         """
@@ -934,7 +980,7 @@ class Wave:
         if win_flag:
             window = np.hamming(seg_length)
         i, j = 0, seg_length
-        step = seg_length // 2
+        step = int(seg_length // 2)
 
         # map from time to Spectrum
         spec_map = {}
@@ -955,8 +1001,8 @@ class Wave:
 
     def get_xfactor(self, options):
         try:
-            xfactor = options['xfactor']
-            options.pop('xfactor')
+            xfactor = options["xfactor"]
+            options.pop("xfactor")
         except KeyError:
             xfactor = 1
         return xfactor
@@ -964,16 +1010,18 @@ class Wave:
     def plot(self, **options):
         """Plots the wave.
 
+        If the ys are complex, plots the real part.
+
         """
         xfactor = self.get_xfactor(options)
-        thinkplot.plot(self.ts * xfactor, self.ys, **options)
+        plt.plot(self.ts * xfactor, np.real(self.ys), **options)
 
     def plot_vlines(self, **options):
         """Plots the wave with vertical lines for samples.
 
         """
         xfactor = self.get_xfactor(options)
-        thinkplot.vlines(self.ts * xfactor, 0, self.ys, **options)
+        plt.vlines(self.ts * xfactor, 0, self.ys, **options)
 
     def corr(self, other):
         """Correlation coefficient two waves.
@@ -984,7 +1032,7 @@ class Wave:
         """
         corr = np.corrcoef(self.ys, other.ys)[0, 1]
         return corr
-        
+
     def cov_mat(self, other):
         """Covariance matrix of two waves.
 
@@ -1013,7 +1061,7 @@ class Wave:
         """
         n = len(self.ys)
         factor = math.pi * k / n
-        ys = [math.cos(factor * (i+0.5)) for i in range(n)]
+        ys = [math.cos(factor * (i + 0.5)) for i in range(n)]
         total = 2 * sum(self.ys * ys)
         return total
 
@@ -1030,17 +1078,17 @@ class Wave:
 
         return res
 
-    def write(self, filename='sound.wav'):
+    def write(self, filename="sound.wav"):
         """Write a wave file.
 
         filename: string
         """
-        print('Writing', filename)
+        print("Writing", filename)
         wfile = WavFileWriter(filename, self.framerate)
         wfile.write(self)
         wfile.close()
 
-    def play(self, filename='sound.wav'):
+    def play(self, filename="sound.wav"):
         """Plays a wave file.
 
         filename: string
@@ -1122,9 +1170,9 @@ def quantize(ys, bound, dtype):
     returns: quantized signal
     """
     if max(ys) > 1 or min(ys) < -1:
-        warnings.warn('Warning: normalizing before quantizing.')
+        warnings.warn("Warning: normalizing before quantizing.")
         ys = normalize(ys)
-        
+
     zs = (ys * bound).astype(dtype)
     return zs
 
@@ -1152,7 +1200,7 @@ def apodize(ys, framerate, denom=20, duration=0.1):
     k = min(k1, k2)
 
     w1 = np.linspace(0, 1, k)
-    w2 = np.ones(n - 2*k)
+    w2 = np.ones(n - 2 * k)
     w3 = np.linspace(1, 0, k)
 
     window = np.concatenate((w1, w2, w3))
@@ -1197,7 +1245,7 @@ class Signal:
         duration = self.period * 3
         wave = self.make_wave(duration, start=0, framerate=framerate)
         wave.plot()
-    
+
     def make_wave(self, duration=1, start=0, framerate=11025):
         """Makes a Wave object.
 
@@ -1222,7 +1270,7 @@ def infer_framerate(ts):
 
     returns: frames per second
     """
-    #TODO: confirm that this is never used and remove it
+    # TODO: confirm that this is never used and remove it
     dt = ts[1] - ts[0]
     framerate = 1.0 / dt
     return framerate
@@ -1230,7 +1278,7 @@ def infer_framerate(ts):
 
 class SumSignal(Signal):
     """Represents the sum of signals."""
-    
+
     def __init__(self, *args):
         """Initializes the sum.
 
@@ -1255,7 +1303,7 @@ class SumSignal(Signal):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1264,7 +1312,7 @@ class SumSignal(Signal):
 
 class Sinusoid(Signal):
     """Represents a sinusoidal signal."""
-    
+
     def __init__(self, freq=440, amp=1.0, offset=0, func=np.sin):
         """Initializes a sinusoidal signal.
 
@@ -1290,7 +1338,7 @@ class Sinusoid(Signal):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1305,7 +1353,7 @@ def CosSignal(freq=440, amp=1.0, offset=0):
     freq: float frequency in Hz
     amp: float amplitude, 1.0 is nominal max
     offset: float phase offset in radians
-    
+
     returns: Sinusoid object
     """
     return Sinusoid(freq, amp, offset, func=np.cos)
@@ -1317,7 +1365,7 @@ def SinSignal(freq=440, amp=1.0, offset=0):
     freq: float frequency in Hz
     amp: float amplitude, 1.0 is nominal max
     offset: float phase offset in radians
-    
+
     returns: Sinusoid object
     """
     return Sinusoid(freq, amp, offset, func=np.sin)
@@ -1329,7 +1377,7 @@ def Sinc(freq=440, amp=1.0, offset=0):
     freq: float frequency in Hz
     amp: float amplitude, 1.0 is nominal max
     offset: float phase offset in radians
-    
+
     returns: Sinusoid object
     """
     return Sinusoid(freq, amp, offset, func=np.sinc)
@@ -1342,7 +1390,7 @@ class ComplexSinusoid(Sinusoid):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1353,12 +1401,12 @@ class ComplexSinusoid(Sinusoid):
 
 class SquareSignal(Sinusoid):
     """Represents a square signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1370,12 +1418,12 @@ class SquareSignal(Sinusoid):
 
 class SawtoothSignal(Sinusoid):
     """Represents a sawtooth signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1387,30 +1435,30 @@ class SawtoothSignal(Sinusoid):
 
 class ParabolicSignal(Sinusoid):
     """Represents a parabolic signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
         cycles = self.freq * ts + self.offset / PI2
         frac, _ = np.modf(cycles)
-        ys = (frac - 0.5)**2
+        ys = (frac - 0.5) ** 2
         ys = normalize(unbias(ys), self.amp)
         return ys
 
 
 class CubicSignal(ParabolicSignal):
     """Represents a cubic signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ys = ParabolicSignal.evaluate(self, ts)
@@ -1421,30 +1469,30 @@ class CubicSignal(ParabolicSignal):
 
 class GlottalSignal(Sinusoid):
     """Represents a periodic signal that resembles a glottal signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
         cycles = self.freq * ts + self.offset / PI2
         frac, _ = np.modf(cycles)
-        ys = frac**2 * (1-frac)
+        ys = frac ** 2 * (1 - frac)
         ys = normalize(unbias(ys), self.amp)
         return ys
 
 
 class TriangleSignal(Sinusoid):
     """Represents a triangle signal."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ts = np.asarray(ts)
@@ -1454,10 +1502,11 @@ class TriangleSignal(Sinusoid):
         ys = normalize(unbias(ys), self.amp)
         return ys
 
+from scipy.integrate import cumtrapz
 
 class Chirp(Signal):
     """Represents a signal with variable frequency."""
-    
+
     def __init__(self, start=440, end=880, amp=1.0):
         """Initializes a linear chirp.
 
@@ -1475,55 +1524,69 @@ class Chirp(Signal):
 
         returns: float seconds
         """
-        return ValueError('Non-periodic signal.')
+        return ValueError("Non-periodic signal.")
 
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
+        Note: This version is a little more complicated than the one
+        in the book because it handles the case where the ts are
+        not equally spaced.
+
         ts: float array of times
-        
+
         returns: float wave array
         """
-        freqs = np.linspace(self.start, self.end, len(ts)-1)
-        return self._evaluate(ts, freqs)
+        def interpolate(ts, f0, f1):
+            t0, t1 = ts[0], ts[-1]
+            return f0 + (f1 - f0) * (ts - t0) / (t1 - t0)
 
-    def _evaluate(self, ts, freqs):
-        """Helper function that evaluates the signal.
+        # compute the frequencies
+        ts = np.asarray(ts)
+        freqs = interpolate(ts, self.start, self.end)
 
-        ts: float array of times
-        freqs: float array of frequencies during each interval
-        """
-        dts = np.diff(ts)
-        dps = PI2 * freqs * dts
-        phases = np.cumsum(dps)
-        phases = np.insert(phases, 0, 0)
+        # compute the time intervals
+        dts = np.diff(ts, append=ts[-1])
+
+        # compute the changes in phase
+        dphis = PI2 * freqs * dts
+        dphis = np.roll(dphis, 1)
+
+        # compute phase
+        phases = np.cumsum(dphis)
+
+        # compute the amplitudes
         ys = self.amp * np.cos(phases)
         return ys
 
 
 class ExpoChirp(Chirp):
     """Represents a signal with varying frequency."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
-        start, end = np.log10(self.start), np.log10(self.end)
-        freqs = np.logspace(start, end, len(ts)-1)
-        return self._evaluate(ts, freqs)
+        f0, f1 = np.log10(self.start), np.log10(self.end)
+        freqs = np.logspace(f0, f1, len(ts))
+        dts = np.diff(ts, prepend=0)
+        dphis = PI2 * freqs * dts
+        phases = np.cumsum(dphis)
+        ys = self.amp * np.cos(phases)
+        return ys
 
 
 class SilentSignal(Signal):
     """Represents silence."""
-    
+
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         return np.zeros(len(ts))
@@ -1531,7 +1594,7 @@ class SilentSignal(Signal):
 
 class Impulses(Signal):
     """Represents silence."""
-    
+
     def __init__(self, locations, amps=1):
         self.locations = np.asanyarray(locations)
         self.amps = amps
@@ -1540,7 +1603,7 @@ class Impulses(Signal):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ys = np.zeros(len(ts))
@@ -1549,9 +1612,9 @@ class Impulses(Signal):
         return ys
 
 
-class _Noise(Signal):
+class Noise(Signal):
     """Represents a noise signal (abstract parent class)."""
-    
+
     def __init__(self, amp=1.0):
         """Initializes a white noise signal.
 
@@ -1565,38 +1628,38 @@ class _Noise(Signal):
 
         returns: float seconds
         """
-        return ValueError('Non-periodic signal.')
+        return ValueError("Non-periodic signal.")
 
 
-class UncorrelatedUniformNoise(_Noise):
+class UncorrelatedUniformNoise(Noise):
     """Represents uncorrelated uniform noise."""
 
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ys = np.random.uniform(-self.amp, self.amp, len(ts))
         return ys
 
 
-class UncorrelatedGaussianNoise(_Noise):
+class UncorrelatedGaussianNoise(Noise):
     """Represents uncorrelated gaussian noise."""
 
     def evaluate(self, ts):
         """Evaluates the signal at the given times.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         ys = np.random.normal(0, self.amp, len(ts))
         return ys
 
 
-class BrownianNoise(_Noise):
+class BrownianNoise(Noise):
     """Represents Brownian noise, aka red noise."""
 
     def evaluate(self, ts):
@@ -1606,17 +1669,17 @@ class BrownianNoise(_Noise):
         a uniform random series.
 
         ts: float array of times
-        
+
         returns: float wave array
         """
         dys = np.random.uniform(-1, 1, len(ts))
-        #ys = scipy.integrate.cumtrapz(dys, ts)
+        # ys = scipy.integrate.cumtrapz(dys, ts)
         ys = np.cumsum(dys)
         ys = normalize(unbias(ys), self.amp)
         return ys
 
 
-class PinkNoise(_Noise):
+class PinkNoise(Noise):
     """Represents Brownian noise, aka red noise."""
 
     def __init__(self, amp=1.0, beta=1.0):
@@ -1698,11 +1761,11 @@ def midi_to_freq(midi_num):
     """Converts MIDI note number to frequency.
 
     midi_num: int MIDI note number
-    
+
     returns: float frequency in Hz
     """
     x = (midi_num - 69) / 12.0
-    freq = 440.0 * 2**x
+    freq = 440.0 * 2 ** x
     return freq
 
 
@@ -1753,8 +1816,83 @@ def zero_pad(array, n):
     returns: new NumPy array
     """
     res = np.zeros(n)
-    res[:len(array)] = array
+    res[: len(array)] = array
     return res
+
+
+def decorate(**options):
+    """Decorate the current axes.
+
+    Call decorate with keyword arguments like
+
+    decorate(title='Title',
+             xlabel='x',
+             ylabel='y')
+
+    The keyword arguments can be any of the axis properties
+
+    https://matplotlib.org/api/axes_api.html
+
+    In addition, you can use `legend=False` to suppress the legend.
+
+    And you can use `loc` to indicate the location of the legend
+    (the default value is 'best')
+    """
+    loc = options.pop("loc", "best")
+    if options.pop("legend", True):
+        legend(loc=loc)
+
+    plt.gca().set(**options)
+    plt.tight_layout()
+
+
+def legend(**options):
+    """Draws a legend only if there is at least one labeled item.
+
+    options are passed to plt.legend()
+    https://matplotlib.org/api/_as_gen/matplotlib.plt.legend.html
+
+    """
+    underride(options, loc="best", frameon=False)
+
+    ax = plt.gca()
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        ax.legend(handles, labels, **options)
+
+
+def remove_from_legend(bad_labels):
+    """Removes some labels from the legend.
+
+    bad_labels: sequence of strings
+    """
+    ax = plt.gca()
+    handles, labels = ax.get_legend_handles_labels()
+    handle_list, label_list = [], []
+    for handle, label in zip(handles, labels):
+        if label not in bad_labels:
+            handle_list.append(handle)
+            label_list.append(label)
+    ax.legend(handle_list, label_list)
+
+
+def underride(d, **options):
+    """Add key-value pairs to d only if key is not in d.
+
+    If d is None, create a new dictionary.
+
+    d: dictionary
+    options: keyword args to add to d
+    """
+    if d is None:
+        d = {}
+
+    for key, val in options.items():
+        d.setdefault(key, val)
+
+    return d
+
+
 
 
 def main():
@@ -1762,15 +1900,21 @@ def main():
     cos_basis = cos_wave(440)
     sin_basis = sin_wave(440)
 
-    wave = cos_wave(440, offset=math.pi/2)
+    wave = cos_wave(440, offset=math.pi / 2)
     cos_cov = cos_basis.cov(wave)
     sin_cov = sin_basis.cov(wave)
     print(cos_cov, sin_cov, mag((cos_cov, sin_cov)))
     return
 
     wfile = WavFileWriter()
-    for sig_cons in [SinSignal, TriangleSignal, SawtoothSignal, 
-                     GlottalSignal, ParabolicSignal, SquareSignal]:
+    for sig_cons in [
+        SinSignal,
+        TriangleSignal,
+        SawtoothSignal,
+        GlottalSignal,
+        ParabolicSignal,
+        SquareSignal,
+    ]:
         print(sig_cons)
         sig = sig_cons(440)
         wave = sig.make_wave(1)
@@ -1781,7 +1925,7 @@ def main():
 
     signal = GlottalSignal(440)
     signal.plot()
-    pyplot.show()
+    plt.show()
     return
 
     wfile = WavFileWriter()
@@ -1806,16 +1950,16 @@ def main():
     sig5 = CosSignal(freq=987)
     sig = sig1 + sig2 + sig3 + sig4
 
-    #wave = Wave(sig, duration=0.02)
-    #wave.plot()
+    # wave = Wave(sig, duration=0.02)
+    # wave.plot()
 
     wave = sig.make_wave(duration=1)
-    #wave.normalize()
+    # wave.normalize()
 
     wfile = WavFileWriter(wave)
     wfile.write()
     wfile.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
